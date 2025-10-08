@@ -52,6 +52,25 @@ curl -H "Content-Type: application/json" -X POST http://localhost:4000/users/log
 **Responses**:
 - **200**: { "user": { "_id": "<id>", "email": "alice@example.com" }, "token": "<jwt>" }
 - **400/401**: Validation or unauthorized errors
+## GET /users/profile
+Protected endpoint — returns the authenticated user's profile.
+
+**Request**: GET /users/profile
+- Auth: send `Authorization: Bearer <token>` header or cookie `token`
+
+**Responses**:
+- **200**: { "user": { "_id": "<id>", "fullname": {"firstname":"Alice"}, "email": "alice@example.com" } }
+- **401**: { "message": "Access denied. No token provided." } or { "message": "Invalid token" }
+
+## GET /users/logout
+Clears auth cookie and (optionally) blacklists the token.
+
+**Request**: GET /users/logout
+- Auth: same as profile (protected)
+
+**Responses**:
+- **200**: { "message": "Logged out successfully" }
+- **401**: Unauthorized if token missing/invalid
 
 ## Notes
 - Passwords are hashed before storage.
