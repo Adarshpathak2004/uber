@@ -1,6 +1,7 @@
 const userModel = require("../models/user.model");
 const userService = require("../services/user.service");
 const { validationResult } = require('express-validator');
+const BlacklistTokenmodel=require("../models/blacklisttoken.model");
 
 module.exports.registeruser = async (req, res, next) => {
     try {
@@ -20,6 +21,7 @@ module.exports.registeruser = async (req, res, next) => {
         const token = user.generateAuthToken();
         // ensure password is not returned
         if (user.password) user.password = undefined;
+        res.cookie("token", token, { httpOnly: true, secure: process.env.NODE_ENV === "production" });
         return res.status(201).json({ user, token });
     } catch (err) {
         // duplicate key (email)
@@ -45,9 +47,19 @@ module.exports.loginuser = async (req, res, next) => {
 
         const token = user.generateAuthToken();
         if (user.password) user.password = undefined;
+        res.cookie("token", token, { httpOnly: true, secure: process.env.NODE_ENV === "production" });
         return res.status(200).json({ user, token });
     } catch (err) {
         console.error('loginuser error:', err);
         return res.status(500).json({ error: 'Internal server error' });
     }
 };
+
+module.exports.getUserProfile = async (req, res, next) => {
+  res.status(200).json({ user: req.user });
+}
+module.exports.logoutuser = async (req, res, next) => {
+    res.clearCookie("token");
+    const token=req.cookies.token || (req.header('Authorization') && req.header('Authorization').split(' ')[1]) ;
+    return res.status(200).json({ message: 'Logged out successfully' });
+}

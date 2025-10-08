@@ -34,10 +34,15 @@ const userSchema=new mongoose.Schema({
         
     },
 }) 
-     userSchema.methods.generateAuthToken=function(){
-        const token=jwt.sign({_id:this._id},process.env.JWT_SECRET)
-        return token;
-     }
+    userSchema.methods.generateAuthToken=function(){
+       const token = jwt.sign(
+          { _id: this._id },
+          process.env.JWT_SECRET,
+          { expiresIn: '24h' }
+       );
+       return token;
+    }
+
      userSchema.methods.comparePassword=async function(password){
         return await bcrypt.compare(password,this.password);
      }
