@@ -72,6 +72,35 @@ Clears auth cookie and (optionally) blacklists the token.
 - **200**: { "message": "Logged out successfully" }
 - **401**: Unauthorized if token missing/invalid
 
+## Captain Routes
+
+### POST /captain/register
+Creates a captain account & returns JWT token.
+
+**Body**:
+```json
+{
+  "fullname": {
+    "firstname": "string",  // min 5 chars
+    "lastname": "string"    // min 5 chars
+  },
+  "email": "string",
+  "password": "string",     // min 6 chars
+  "vehicle": {
+    "color": "string",     // min 3 chars
+    "plate": "string",     // min 3 chars
+    "capacity": number,    // min 1
+    "vehicleType": "car" | "bike" | "auto"
+  }
+}
+```
+
+**Responses**:
+- **201**: Returns created captain object and JWT token
+- **400**: Validation errors (missing/invalid fields)
+- **409**: Email already exists
+- **500**: Server error
+
 ## Notes
 - Passwords are hashed before storage.
 - Error handling: 409 for duplicate emails, 500 for other errors.
