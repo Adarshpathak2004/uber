@@ -1,34 +1,58 @@
-# POST /users/register (short)
+# API Docs - User Authentication
 
-Create a user and return a JWT.
+## Environment
+- **DB_CONNECT**: MongoDB URI
+- **JWT_SECRET**: JWT secret
 
-Endpoint: POST /users/register
-Content-Type: application/json
+## POST /users/register
+Creates a user & returns a JWT.
 
-Request body (JSON):
-{
-  "fullname": { "firstname": "string", "lastname": "string" },
-  "email": "string",
-  "password": "string"
-}
+**Request**: POST /users/register
+- Content-Type: application/json
+- Body:
+  ```json
+  {
+    "fullname": { "firstname": "string", "lastname": "string" },
+    "email": "string",
+    "password": "string"
+  }
+  ```
+**Validation**: 
+- fullname.firstname: required (min 3/5)
+- email: valid, unique, min 10 chars
+- password: min 6/8 chars
 
-Quick validation notes: `fullname.firstname` required (route min 3 / model min 5), `email` must be an email, `password` min 6 (route) / 8 (model).
-
-Example (curl):
+**Example**:
+```bash
 curl -H "Content-Type: application/json" -X POST http://localhost:4000/users/register \
-  -d '{"fullname":{"firstname":"Alice","lastname":"Smith"},"email":"alice@example.com","password":"strongPassword123"}'
+-d '{"fullname":{"firstname":"Alice","lastname":"Smith"},"email":"alice@example.com","password":"strongPassword123"}'
+```
 
-Responses (examples):
-- 201 Created
-  { "user": { "_id": "<id>", "fullname": {"firstname":"Alice"}, "email":"alice@example.com" }, "token": "<jwt>" }
-- 400 Bad Request (validation)
-  { "errors": [ { "msg": "Invalid email format", "param": "email" } ] }
-- 409 Conflict (duplicate email)
-  { "error": "Email already in use", "code": 11000, "keyValue": { "email": "alice@example.com" } }
+**Responses**:
+- **201**: { "user": { "_id": "<id>", "fullname": {"firstname":"Alice"}, "email": "alice@example.com" }, "token": "<jwt>" }
+- **400**: { "errors": [{ "msg": "Invalid email format", "param": "email" }] }
+- **409**: Duplicate email error
 
-Notes:
-- Set env vars: `DB_CONNECT` and `JWT_SECRET` before starting the server.
-- Passwords are hashed; controller uses `userModel.hashPassword`.
-- Consider aligning route and model validation to avoid unexpected 500s.
+## POST /users/login
+Authenticates user & returns a JWT.
 
-Testing: run server and use the curl example above.
+**Request**: POST /users/login
+- Content-Type: application/json
+- Body:
+  ```json
+  { "email": "string", "password": "string" }
+  ```
+
+**Example**:
+```bash
+curl -H "Content-Type: application/json" -X POST http://localhost:4000/users/login \
+-d '{"email":"alice@example.com","password":"strongPassword123"}'
+```
+
+**Responses**:
+- **200**: { "user": { "_id": "<id>", "email": "alice@example.com" }, "token": "<jwt>" }
+- **400/401**: Validation or unauthorized errors
+
+## Notes
+- Passwords are hashed before storage.
+- Error handling: 409 for duplicate emails, 500 for other errors.
