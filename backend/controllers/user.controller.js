@@ -14,18 +14,37 @@ module.exports.registeruser = async (req, res, next) => {
             return res.status(400).json({ message: 'fullname.firstname is required' });
         }
 
+        // Hash password using model helper if service doesn't
         const hashedPassword = await userModel.hashPassword(password);
-        const user = await userService.createUser({
-            firstname: fullname.firstname,
-            lastname: fullname.lastname,
-            email,
-            password: hashedPassword
-        });
+        let user;
+        try {
+            user = await userService.createUser({
+                firstname: fullname.firstname,
+                lastname: fullname.lastname,
+                email,
+                password: hashedPassword
+            });
+        } catch (createErr) {
+            // Handle duplicate key (email already exists)
+            if (createErr && createErr.code === 11000) {
+                return res.status(409).json({ message: 'Email already exists' });
+            }
+            // If validation error from mongoose
+            if (createErr && createErr.name === 'ValidationError') {
+                return res.status(400).json({ message: createErr.message });
+            }
+            // rethrow other errors to be handled by outer catch
+            throw createErr;
+        }
 
         const token = user.generateAuthToken();
+        // hide password field if present in doc
+        if (user && user.password) user.password = undefined;
         res.status(201).json({ user, token });
     } catch (err) {
-        next(err);
+        // Log error for debugging and return 500 for unexpected errors
+        console.error('Register user error:', err);
+        return res.status(500).json({ message: 'Internal server error' });
     }
 };
 

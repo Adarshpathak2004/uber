@@ -1,11 +1,17 @@
-import React, { useMemo, useState } from 'react'
+import React, {useContext, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-
+import { useNavigate } from 'react-router-dom'
+import axios from 'axios'
+import {CaptainDataContext} from '../context/CaptainContext'
+import { UserDataContext } from '../context/UserContext'
+const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:3000'
 const CaptainLogin = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const[captainData,setCaptainData]=useState('')
-
+  const { setSelectedCaptain } = useContext(CaptainDataContext)
+  
+  const { setUserData } = useContext(UserDataContext)
+  const navigate = useNavigate()
   const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState({ email: '', password: '' })
@@ -21,10 +27,6 @@ const CaptainLogin = () => {
   // ✅ Handle form submit
   const submitHandler = async (e) => {
     e.preventDefault()
-    setCaptainData({
-        email:email,
-        password:password
-    })
 
     const nextErrors = { email: '', password: '' }
     if (!isValidEmail) nextErrors.email = 'Enter a valid email address'
@@ -34,13 +36,28 @@ const CaptainLogin = () => {
 
     try {
       setIsSubmitting(true)
-      // TODO: Integrate your captain login API call here
-      await new Promise((resolve) => setTimeout(resolve, 700))
-      alert('Captain login successful!')
-
-      // clear form on success
-      setEmail('')
-      setPassword('')
+      const payload = { email, password }
+      const requestUrl = `${BASE_URL}/captain/login`
+      const response = await axios.post(requestUrl, payload)
+      if (response.status === 200) {
+        const data = response.data
+        // Save captain to context if provider exposes setter
+        if (typeof setSelectedCaptain === 'function') setSelectedCaptain(data.captain)
+        if (data.token) localStorage.setItem('token', data.token)
+        navigate('/captain-home')
+        alert('Captain login successful!')
+        setEmail('')
+        setPassword('')
+      }
+    } catch (err) {
+      console.error('Captain login error:', err)
+      if (err.response?.status === 401) {
+        alert('Invalid email or password')
+      } else if (err.code === 'ERR_NETWORK' || err.message?.toLowerCase().includes('network')) {
+        alert(`Network error: cannot reach backend at ${BASE_URL}`)
+      } else {
+        alert('Login failed. Please try again.')
+      }
     } finally {
       setIsSubmitting(false)
     }

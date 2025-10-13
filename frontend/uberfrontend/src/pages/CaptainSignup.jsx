@@ -1,6 +1,10 @@
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useState, useContext } from 'react'
 import { Link } from 'react-router-dom'
-
+import {CaptainDataContext} from '../context/CaptainContext'
+import { useNavigate } from 'react-router-dom'
+import axios from 'axios'
+// Use VITE_BASE_URL if set, otherwise default to backend server port 3000 (server.js defaults to 3000)
+const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:3000'
 const CaptainSignup = () => {
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
@@ -10,6 +14,15 @@ const CaptainSignup = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState({ email: '', password: '' })
+  const { captains, createCaptain } = useContext(CaptainDataContext)
+  const [vehicleColor, setVehicleColor] = useState('')
+  const [vehiclePlate, setVehiclePlate] = useState('')
+  const [vehicleCapacity, setVehicleCapacity] = useState('')
+  const [vehicleType, setVehicleType] = useState('')
+  const navigate = useNavigate()
+  
+
+
 
   // ✅ Email validation
   const isValidEmail = useMemo(() => {
@@ -27,27 +40,65 @@ const CaptainSignup = () => {
   const submitHandler = async (e) => {
     e.preventDefault()
 
+    // Client-side validation first
     const nextErrors = { email: '', password: '' }
     if (!isValidEmail) nextErrors.email = 'Enter a valid email address'
     if (password.length < 6) nextErrors.password = 'Password must be at least 6 characters'
     setErrors(nextErrors)
     if (nextErrors.email || nextErrors.password) return
 
+    const payload = {
+      fullname: { firstname: firstName, lastname: lastName },
+      email,
+      password,
+      vehicle: {
+        color: vehicleColor,
+        plate: vehiclePlate,
+        capacity: Number(vehicleCapacity) || 0,
+        vehicleType: vehicleType,
+      },
+    }
+
     try {
       setIsSubmitting(true)
+  const requestUrl = `${BASE_URL}/captain/register`
+  const response = await axios.post(requestUrl, payload)
+      if (response.status === 201) {
+        const data = response.data
+        setCaptainData(data.captain || {})
+        if (data.token) localStorage.setItem('token', data.token)
+        navigate('/home')
+        alert('Captain Signup successful!')
 
-      // Save captain data (for demo purposes)
-      setCaptainData({ firstName, lastName, email, password })
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 700))
-      alert('Captain Signup successful!')
-
-      // Clear form
-      setFirstName('')
-      setLastName('')
-      setEmail('')
-      setPassword('')
+        // Clear form
+        setFirstName('')
+        setLastName('')
+        setEmail('')
+        setPassword('')
+        setVehicleColor('')
+        setVehiclePlate('')
+        setVehicleCapacity('')
+        setVehicleType('')
+      }
+    } catch (err) {
+      console.error('Captain signup error:', err)
+      // helpful debug log for network errors
+      if (err.code === 'ERR_NETWORK' || err.message?.toLowerCase().includes('network')) {
+        console.error('Network error while attempting POST to:', `${BASE_URL}/captain/register`)
+        alert(`Network error: could not reach backend at ${BASE_URL}. Is the backend running on that port?`)
+      }
+      if (err.response?.status === 400) {
+        const serverErrors = err.response.data?.errors
+        if (serverErrors && Array.isArray(serverErrors)) {
+          alert('Validation error: ' + serverErrors.map(s => s.msg).join(', '))
+        } else {
+          alert(err.response.data?.message || 'Signup failed. Please check input.')
+        }
+      } else if (err.response?.status === 409) {
+        alert('Captain already exists')
+      } else {
+        alert('Signup failed. Please try again.')
+      }
     } finally {
       setIsSubmitting(false)
     }
@@ -126,6 +177,61 @@ const CaptainSignup = () => {
                     placeholder="Enter password"
                     aria-invalid={!!errors.password}
                   />
+                  <div className="mt-4 border-t pt-4">
+                    <label className="text-sm font-medium text-slate-700">Vehicle Details</label>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+                      <div>
+                        <label className="text-sm text-slate-600">Vehicle Type</label>
+                        <select
+                          required
+                          value={vehicleType}
+                          onChange={(e) => setVehicleType(e.target.value)}
+                          className="mt-1 bg-[#f5f7fb] rounded-lg px-4 py-2 border w-full text-lg outline-none focus:ring-2 focus:ring-sky-300 border-sky-200"
+                        >
+                          <option value="">Select type</option>
+                          <option value="car">Car</option>
+                          <option value="auto">Auto</option>
+                          <option value="bike">Bike</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-sm text-slate-600">Plate Number</label>
+                        <input
+                          required
+                          value={vehiclePlate}
+                          onChange={(e) => setVehiclePlate(e.target.value)}
+                          className="mt-1 bg-[#f5f7fb] rounded-lg px-4 py-2 border w-full text-lg placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-sky-300 border-sky-200"
+                          type="text"
+                          placeholder="ABC-1234"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-sm text-slate-600">Color</label>
+                        <input
+                          value={vehicleColor}
+                          onChange={(e) => setVehicleColor(e.target.value)}
+                          className="mt-1 bg-[#f5f7fb] rounded-lg px-4 py-2 border w-full text-lg placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-sky-300 border-sky-200"
+                          type="text"
+                          placeholder="e.g. White"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-sm text-slate-600">Capacity (seats)</label>
+                        <input
+                          value={vehicleCapacity}
+                          onChange={(e) => setVehicleCapacity(e.target.value)}
+                          className="mt-1 bg-[#f5f7fb] rounded-lg px-4 py-2 border w-full text-lg placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-sky-300 border-sky-200"
+                          type="number"
+                          min="1"
+                          placeholder="e.g. 4"
+                        />
+                      </div>
+                    </div>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setShowPassword((s) => !s)}

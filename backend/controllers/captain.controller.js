@@ -6,29 +6,56 @@ module.exports.registerCaptain = async (req, res) => {
     try {
         const errors = validationResult(req);
         if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+        // Accept nested payloads: { fullname: { firstname, lastname }, vehicle: { color, plate, capacity, vehicleType } }
+        const fullname = req.body.fullname || {};
+        const vehicle = req.body.vehicle || {};
 
-        const { firstname, lastname, email, password, color, plate, capacity, vehicleType } = req.body;
+        const firstname = fullname.firstname || req.body.firstname;
+        const lastname = fullname.lastname || req.body.lastname;
+        const email = req.body.email;
+        const password = req.body.password;
+        const color = vehicle.color || req.body.color;
+        const plate = vehicle.plate || req.body.plate;
+        const capacity = vehicle.capacity !== undefined ? Number(vehicle.capacity) : (req.body.capacity !== undefined ? Number(req.body.capacity) : undefined);
+        const vehicleType = vehicle.vehicleType || req.body.vehicleType;
+
+        // Basic server-side required checks (more detailed validation is handled by express-validator middleware)
+        if (!firstname || !email || !password || !color || !plate || !capacity || !vehicleType) {
+            return res.status(400).json({ message: 'Required fields missing' });
+        }
 
         const isCaptainExists = await captainModel.findOne({ email });
         if (isCaptainExists) return res.status(409).json({ message: "Captain already exists" });
 
         const hashedPassword = await captainModel.hashPassword(password);
 
-        const captain = await captainService.createCaptain({
-            firstname,
-            lastname,
-            email,
-            password: hashedPassword,
-            color,
-            plate,
-            capacity,
-            vehicleType
-        });
+        let captain;
+        try {
+            captain = await captainService.createCaptain({
+                firstname,
+                lastname,
+                email,
+                password: hashedPassword,
+                color,
+                plate,
+                capacity,
+                vehicleType
+            });
+        } catch (createErr) {
+            // forward validation errors or duplicate key
+            if (createErr && createErr.code === 11000) {
+                return res.status(409).json({ message: 'Captain already exists' });
+            }
+            if (createErr && createErr.message === 'Required fields missing') {
+                return res.status(400).json({ message: createErr.message });
+            }
+            throw createErr;
+        }
 
         const token = captain.generateAuthToken();
         res.status(201).json({ token, captain });
     } catch (err) {
-        console.error(err);
+        console.error('Register captain error:', err);
         res.status(500).json({ message: "Internal server error" });
     }
 };

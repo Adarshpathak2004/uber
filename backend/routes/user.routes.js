@@ -10,8 +10,9 @@ router.post(
   '/register',
   [
     body('email').isEmail().withMessage('Invalid email format'),
-    body('fullname.firstname').isLength({ min: 3 }).withMessage('First name must be at least 3 characters long'),
-    body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long')
+    body('fullname.firstname').isLength({ min: 5 }).withMessage('First name must be at least 5 characters long'),
+    body('fullname.lastname').isLength({ min: 5 }).withMessage('Last name must be at least 5 characters long'),
+    body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters long')
   ],
   userController.registeruser
 );
@@ -21,7 +22,7 @@ router.post(
   '/login',
   [
     body('email').isEmail().withMessage('Invalid email format'),
-    body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long')
+    body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters long')
   ],
   userController.loginuser
 );

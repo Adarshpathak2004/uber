@@ -5,12 +5,14 @@ module.exports.createUser=async({
     if(!firstname || !email || !password){
         throw new Error('Required fields missing');
     }   
-    const user=userModel.create({
-        fullname:{
+    // Ensure we wait for the create operation so callers receive the actual document
+    const user = await userModel.create({
+        fullname: {
             firstname,
             lastname
         },
         email,
-        password})
+        password
+    });
     return user;
 }
